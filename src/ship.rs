@@ -10,7 +10,7 @@ impl Plugin for ShipPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_ship)
             .add_systems(
                 Update,
-                (rotate, accelerate, displace).run_if(in_state(GameState::Playing)),
+                (rotate, accelerate, displace, wrap).run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -25,6 +25,9 @@ pub struct Ship;
 #[derive(Component, Debug)]
 struct Speed(Vec3);
 
+#[derive(Component)]
+struct Wrapping;
+
 #[derive(Component, Debug)]
 struct Heading(Vec3);
 
@@ -35,6 +38,7 @@ pub struct ShipBundle {
     ship: Ship,
     speed: Speed,
     heading: Heading,
+    wrapping: Wrapping,
 }
 
 impl ShipBundle {
@@ -54,6 +58,7 @@ impl ShipBundle {
             ship: Ship,
             speed: Speed(Vec3::ZERO),
             heading: Heading(Vec3::ZERO),
+            wrapping: Wrapping,
         }
     }
 }
@@ -101,11 +106,33 @@ fn accelerate(
     }
 }
 
+// Todo: This should probably be extracted as it is the same logic for the asteroids
 fn displace(time: Res<Time>, mut ship_query: Query<(&mut Transform, &Speed), With<Ship>>) {
-    // https://bevyengine.org/examples/2d-rendering/rotation/
     for (mut transform, speed) in &mut ship_query {
         let translation_delta = 100. * speed.0 * time.delta_seconds();
-        // update the ship translation with our new translation delta
         transform.translation += translation_delta;
+    }
+}
+
+fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<Wrapping>>) {
+    if let Ok(window) = window.get_single() {
+        let (width, height) = (window.width(), window.height());
+
+        for mut transform in &mut wrapping_query {
+            let position = transform.translation.truncate();
+
+            if position.y > height / 2. {
+                transform.translation = Vec3::new(position.x * -1., position.y - height, 0.);
+            }
+            if position.y < height / -2. {
+                transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
+            }
+            if position.x > width / 2. {
+                transform.translation = Vec3::new(position.x - width, position.y * -1., 0.)
+            }
+            if position.x < width / -2. {
+                transform.translation = Vec3::new(position.x + width, position.y * -1., 0.)
+            }
+        }
     }
 }
