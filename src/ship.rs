@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{actions::Actions, GameState, Heading};
+use crate::{actions::Actions, GameState, Heading, Speed, Wrapping};
 
 pub struct ShipPlugin;
 
@@ -20,13 +20,6 @@ const ROTATION_SPEED: f32 = 10.;
 
 #[derive(Component)]
 pub struct Ship;
-
-// This vector gives the direction and speed the ship is travelling in
-#[derive(Component, Debug)]
-struct Speed(Vec3);
-
-#[derive(Component)]
-struct Wrapping;
 
 #[derive(Bundle)]
 pub struct ShipBundle {
@@ -111,6 +104,7 @@ fn displace(time: Res<Time>, mut ship_query: Query<(&mut Transform, &Speed), Wit
     }
 }
 
+// Todo: This should be extracted, the asteroids will need the same logic
 fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<Wrapping>>) {
     if let Ok(window) = window.get_single() {
         let (width, height) = (window.width(), window.height());
@@ -118,17 +112,17 @@ fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<W
         for mut transform in &mut wrapping_query {
             let position = transform.translation.truncate();
 
-            if position.y > height / 2. {
-                transform.translation = Vec3::new(position.x * -1., position.y - height, 0.);
-            }
-            if position.y < height / -2. {
-                transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
-            }
             if position.x > width / 2. {
                 transform.translation = Vec3::new(position.x - width, position.y * -1., 0.)
             }
             if position.x < width / -2. {
                 transform.translation = Vec3::new(position.x + width, position.y * -1., 0.)
+            }
+            if position.y > height / 2. {
+                transform.translation = Vec3::new(position.x * -1., position.y - height, 0.);
+            }
+            if position.y < height / -2. {
+                transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
             }
         }
     }
