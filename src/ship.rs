@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{actions::Actions, GameState, Heading, Speed, Wrapping};
+use crate::{actions::Actions, Collider, GameState, Heading, Speed, Wrapping};
 
 pub struct ShipPlugin;
 
@@ -29,6 +29,7 @@ pub struct ShipBundle {
     speed: Speed,
     heading: Heading,
     wrapping: Wrapping,
+    collider: Collider,
 }
 
 impl ShipBundle {
@@ -49,6 +50,7 @@ impl ShipBundle {
             speed: Speed(Vec3::ZERO),
             heading: Heading(Vec3::ZERO),
             wrapping: Wrapping,
+            collider: Collider,
         }
     }
 }

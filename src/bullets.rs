@@ -1,7 +1,12 @@
-use bevy::prelude::*;
+use bevy::{
+    math::bounding::{Aabb2d, IntersectsVolume},
+    prelude::*,
+};
 use bevy_prototype_lyon::{draw::Fill, entity::ShapeBundle, prelude::GeometryBuilder, shapes};
 
-use crate::{actions::FiredAction, GameState, Heading, Position};
+use crate::{
+    actions::FiredAction, asteroids::Asteroid, Collider, GameState, Heading, Hit, Position,
+};
 
 const BULLET_RADIUS: f32 = 2.;
 const BULLET_SPEED: f32 = 10.;
@@ -13,7 +18,8 @@ impl Plugin for BulletsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (spawn_bullet, displace, despawn_bullet).run_if(in_state(GameState::Playing)),
+            (spawn_bullet, displace, detect_collisions, despawn_bullet)
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -28,24 +34,34 @@ struct BulletBundle {
     bullet: Bullet,
     heading: Heading,
     origin: Position,
+    collider: Collider,
 }
 
 impl BulletBundle {
     fn new(heading: Heading, position: Position) -> Self {
         let shape = shapes::Circle {
             radius: BULLET_RADIUS,
-            center: position.0,
+            center: Vec2::ZERO,
         };
 
         Self {
             shape: ShapeBundle {
                 path: GeometryBuilder::build_as(&shape),
+                spatial: SpatialBundle {
+                    transform: Transform {
+                        translation: position.0.extend(0.),
+                        ..default()
+                    },
+                    ..default()
+                },
+
                 ..default()
             },
             fill: Fill::color(BULLET_COLOR),
             bullet: Bullet,
             heading,
             origin: position,
+            collider: Collider,
         }
     }
 }
@@ -75,9 +91,31 @@ fn despawn_bullet(
     for (entity, transform, origin) in bullet_query.iter() {
         let translation = transform.translation;
 
-        let distance = translation.distance(Vec3::from((origin.0, 0.)));
+        let distance = translation.distance(origin.0.extend(0.));
         if distance > 1000. {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+}
+
+fn detect_collisions(
+    mut commands: Commands,
+    bullet_query: Query<&Transform, With<Bullet>>,
+    asteroid_query: Query<(Entity, &Transform), With<Asteroid>>,
+) {
+    for bullet_transform in bullet_query.iter() {
+        let bullet_bounding_box =
+            Aabb2d::new(bullet_transform.translation.truncate(), Vec2::new(1., 1.));
+
+        for (entity, asteroid_transform) in asteroid_query.iter() {
+            let asteroid_bounding_box = Aabb2d::new(
+                asteroid_transform.translation.truncate(),
+                Vec2::new(20., 20.),
+            );
+
+            if bullet_bounding_box.intersects(&asteroid_bounding_box) {
+                commands.entity(entity).insert(Hit);
+            }
         }
     }
 }

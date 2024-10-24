@@ -49,3 +49,9 @@ struct Wrapping;
 // This vector gives the direction and speed the entity is travelling in
 #[derive(Component, Debug)]
 struct Speed(Vec3);
+
+#[derive(Component)]
+struct Collider;
+
+#[derive(Component)]
+struct Hit;

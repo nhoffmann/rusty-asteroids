@@ -2,14 +2,15 @@ use bevy::prelude::*;
 use bevy_prototype_lyon::{draw::Fill, entity::ShapeBundle, prelude::GeometryBuilder, shapes};
 use rand::{prelude::thread_rng, Rng};
 
-use crate::{GameState, Position, Speed, Wrapping};
+use crate::{Collider, GameState, Hit, Position, Speed, Wrapping};
 
 pub struct AsteroidsPlugin;
 
 impl Plugin for AsteroidsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Playing), spawn_asteroids)
-            .add_systems(Update, (displace).run_if(in_state(GameState::Playing)));
+            .add_systems(Update, (displace).run_if(in_state(GameState::Playing)))
+            .add_systems(FixedUpdate, handle_hit.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -17,7 +18,7 @@ const ASTEROID_RADIUS: f32 = 40.;
 const ASTEROID_COLOR: Color = Color::WHITE;
 
 #[derive(Component)]
-struct Asteroid;
+pub struct Asteroid;
 
 #[derive(Bundle)]
 struct AsteroidBundle {
@@ -26,6 +27,7 @@ struct AsteroidBundle {
     asteroid: Asteroid,
     speed: Speed,
     wrapping: Wrapping,
+    collider: Collider,
 }
 
 impl AsteroidBundle {
@@ -51,6 +53,7 @@ impl AsteroidBundle {
             asteroid: Asteroid,
             speed,
             wrapping: Wrapping,
+            collider: Collider,
         }
     }
 }
@@ -86,5 +89,12 @@ fn displace(mut asteroid_query: Query<(&mut Transform, &Speed), With<Asteroid>>)
         let translation_delta = speed.0;
         transform.translation += translation_delta;
         // info!("{:?}", transform.translation);
+    }
+}
+
+fn handle_hit(mut commands: Commands, hit_query: Query<(Entity, &Hit), With<Asteroid>>) {
+    for (entity, _) in hit_query.iter() {
+        // TODO break up the asteroids into smaller ones
+        commands.entity(entity).despawn_recursive();
     }
 }
