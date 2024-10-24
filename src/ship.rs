@@ -1,7 +1,12 @@
-use bevy::prelude::*;
+use bevy::{
+    math::bounding::{Aabb2d, IntersectsVolume},
+    prelude::*,
+};
 use bevy_prototype_lyon::prelude::*;
 
-use crate::{actions::Actions, Collider, GameState, Heading, Speed, Wrapping};
+use crate::{
+    actions::Actions, asteroids::Asteroid, Collider, GameState, Heading, Hit, Speed, Wrapping,
+};
 
 pub struct ShipPlugin;
 
@@ -10,8 +15,10 @@ impl Plugin for ShipPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_ship)
             .add_systems(
                 Update,
-                (rotate, accelerate, displace, wrap).run_if(in_state(GameState::Playing)),
-            );
+                (rotate, accelerate, displace, detect_collisions, wrap)
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(FixedUpdate, handle_hit.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -127,5 +134,35 @@ fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<W
                 transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
             }
         }
+    }
+}
+
+fn detect_collisions(
+    mut commands: Commands,
+    ship_query: Query<(Entity, &Transform), With<Ship>>,
+    asteroid_query: Query<(Entity, &Transform), With<Asteroid>>,
+) {
+    for (ship_entity, ship_transform) in ship_query.iter() {
+        let ship_bounding_box =
+            Aabb2d::new(ship_transform.translation.truncate(), Vec2::new(15., 15.));
+
+        for (asteroid_entity, asteroid_transform) in asteroid_query.iter() {
+            let asteroid_bounding_box = Aabb2d::new(
+                asteroid_transform.translation.truncate(),
+                Vec2::new(20., 20.),
+            );
+
+            if ship_bounding_box.intersects(&asteroid_bounding_box) {
+                commands.entity(asteroid_entity).insert(Hit);
+                commands.entity(ship_entity).insert(Hit);
+            }
+        }
+    }
+}
+
+fn handle_hit(mut commands: Commands, hit_query: Query<(Entity, &Hit), With<Ship>>) {
+    for (entity, _) in hit_query.iter() {
+        commands.entity(entity).remove::<Hit>();
+        info!("Ship destroyed");
     }
 }
