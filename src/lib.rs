@@ -1,6 +1,7 @@
 use asteroids::AsteroidsPlugin;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
+use player::PlayerPlugin;
 use rand::{prelude::thread_rng, Rng};
 
 use actions::ActionsPlugin;
@@ -10,6 +11,7 @@ use ship::ShipPlugin;
 mod actions;
 mod asteroids;
 mod bullets;
+mod player;
 mod ship;
 
 #[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
@@ -28,6 +30,7 @@ impl Plugin for Asteroids {
                 ShipPlugin,
                 BulletsPlugin,
                 AsteroidsPlugin,
+                PlayerPlugin,
                 ShapePlugin,
             ))
             .add_systems(Startup, spawn_camera)

@@ -39,7 +39,6 @@ const ASTEROID_RADIUS_SMALL: f32 = 10.;
 const ASTEROID_COLOR: Color = Color::WHITE;
 const ASTEROID_RESPAWN_TIME_IN_SECONDS: u64 = 4;
 const ASTEROID_SPAWN_RANGE: Range<i32> = 5..10;
-// const ASTEROID_SPAWN_RANGE: Range<i32> = 1..2;
 
 #[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash)]
 #[source(GameState = GameState::Playing)]
@@ -53,7 +52,7 @@ enum AsteroidsState {
 pub struct Asteroid;
 
 #[derive(Component)]
-enum AsteroidSize {
+pub enum AsteroidSize {
     Large,
     Medium,
     Small,

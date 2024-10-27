@@ -10,7 +10,7 @@ An [Asteroids](https://en.wikipedia.org/wiki/Asteroids_(video_game)) clone writt
 * [x] Asteroids will drift around until they are shot or they collide with the player. 
 * [x] Create three sizes of asteroids.
 * [x] Asteroids will break into smaller asteroids when shot (The smallest will disappear when shot).
-* [ ] If the player collides with an asteroid, they will lose a life.
+* [x] If the player collides with an asteroid, they will lose a life.
 * [ ] Add menus and UI.
 * [ ] Add sound effects and particle effects.
 
