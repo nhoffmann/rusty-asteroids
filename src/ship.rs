@@ -244,10 +244,8 @@ fn respawn_timer(
     mut next_state: ResMut<NextState<ShipState>>,
 ) {
     for (entity, mut respawn_timer) in &mut timer_query {
-        // timers gotta be ticked, to work
         respawn_timer.0.tick(time.delta());
 
-        // if it finished, despawn the bomb
         if respawn_timer.0.finished() {
             commands.entity(entity).despawn();
             let ship = ship_query.single();

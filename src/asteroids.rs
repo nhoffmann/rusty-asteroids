@@ -1,3 +1,5 @@
+use std::{ops::Range, time::Duration};
+
 use bevy::prelude::*;
 use bevy_prototype_lyon::{draw::Fill, entity::ShapeBundle, prelude::GeometryBuilder, shapes};
 use rand::{prelude::thread_rng, Rng};
@@ -8,12 +10,26 @@ pub struct AsteroidsPlugin;
 
 impl Plugin for AsteroidsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_asteroids)
+        app.add_sub_state::<AsteroidsState>()
+            .add_systems(OnEnter(AsteroidsState::Flying), spawn_asteroids)
             .add_systems(
                 Update,
-                (displace, gizmo_draw_travelling_directions).run_if(in_state(GameState::Playing)),
+                (
+                    displace,
+                    gizmo_draw_travelling_directions,
+                    check_level_complete,
+                )
+                    .run_if(in_state(AsteroidsState::Flying)),
             )
-            .add_systems(FixedUpdate, handle_hit.run_if(in_state(GameState::Playing)));
+            .add_systems(
+                FixedUpdate,
+                handle_hit.run_if(in_state(AsteroidsState::Flying)),
+            )
+            .add_systems(
+                Update,
+                respawn_timer.run_if(in_state(AsteroidsState::Destroyed)),
+            )
+            .add_systems(OnEnter(AsteroidsState::Destroyed), start_respawn_timer);
     }
 }
 
@@ -21,6 +37,17 @@ const ASTEROID_RADIUS_LARGE: f32 = 40.;
 const ASTEROID_RADIUS_MEDIUM: f32 = 20.;
 const ASTEROID_RADIUS_SMALL: f32 = 10.;
 const ASTEROID_COLOR: Color = Color::WHITE;
+const ASTEROID_RESPAWN_TIME_IN_SECONDS: u64 = 4;
+const ASTEROID_SPAWN_RANGE: Range<i32> = 5..10;
+// const ASTEROID_SPAWN_RANGE: Range<i32> = 1..2;
+
+#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash)]
+#[source(GameState = GameState::Playing)]
+enum AsteroidsState {
+    #[default]
+    Flying,
+    Destroyed,
+}
 
 #[derive(Component)]
 pub struct Asteroid;
@@ -82,14 +109,7 @@ impl AsteroidBundle {
     }
 
     fn random_velocity(position: Position, size: AsteroidSize) -> Self {
-        let random_velocity = Velocity(
-            Vec3::new(
-                thread_rng().gen_range(-1.0..1.0),
-                thread_rng().gen_range(-1.0..1.0),
-                0.,
-            ) * thread_rng().gen_range(0.1..3.),
-        );
-        Self::new(position, random_velocity, size)
+        Self::new(position, Velocity::random(), size)
     }
 }
 
@@ -100,7 +120,7 @@ fn spawn_asteroids(mut commands: Commands, window: Query<&Window>) {
     let half_width = window.width() / 2.;
     let half_height = window.height() / 2.;
 
-    let rand_num_asteroids = thread_rng().gen_range(7..13);
+    let rand_num_asteroids = thread_rng().gen_range(ASTEROID_SPAWN_RANGE);
 
     for _ in 0..rand_num_asteroids {
         let random_x: f32 = thread_rng().gen_range(half_width * -1.0..half_width);
@@ -154,6 +174,15 @@ fn handle_hit(
     }
 }
 
+fn check_level_complete(
+    mut next_state: ResMut<NextState<AsteroidsState>>,
+    asteroids_query: Query<&Asteroid>,
+) {
+    if asteroids_query.is_empty() {
+        next_state.set(AsteroidsState::Destroyed)
+    }
+}
+
 fn gizmo_draw_travelling_directions(
     mut gizmos: Gizmos,
     ship_query: Query<(&Transform, &Velocity), With<Asteroid>>,
@@ -166,5 +195,34 @@ fn gizmo_draw_travelling_directions(
             transform.translation.truncate() + velocity.0.truncate() * length,
             Color::WHITE,
         );
+    }
+}
+
+#[derive(Component)]
+struct RespawnTime(Timer);
+
+fn start_respawn_timer(mut commands: Commands) {
+    commands.spawn(RespawnTime(Timer::new(
+        Duration::from_secs(ASTEROID_RESPAWN_TIME_IN_SECONDS),
+        TimerMode::Once,
+    )));
+    info!("Level complete")
+}
+
+fn respawn_timer(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer_query: Query<(Entity, &mut RespawnTime)>,
+    mut next_state: ResMut<NextState<AsteroidsState>>,
+) {
+    for (entity, mut respawn_timer) in &mut timer_query {
+        respawn_timer.0.tick(time.delta());
+
+        if respawn_timer.0.finished() {
+            info!("Asteroid respawn timer finished");
+            commands.entity(entity).despawn();
+
+            next_state.set(AsteroidsState::Flying);
+        }
     }
 }
