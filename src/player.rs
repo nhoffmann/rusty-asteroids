@@ -10,40 +10,51 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            FixedUpdate,
-            (handle_player_hit, handle_asteroid_hit).run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(OnEnter(GameState::Playing), create_player);
+        app.add_systems(OnEnter(GameState::Playing), spawn_player)
+            .add_systems(
+                FixedUpdate,
+                (handle_player_hit, handle_asteroid_hit).run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(OnEnter(GameState::Menu), despawn_player);
     }
 }
 
 #[derive(Component)]
 pub struct Player {
-    life_count: u8,
-    score: i32,
+    pub life_count: u8,
+    pub score: i32,
 }
 
 impl Player {
     fn new() -> Self {
         Self {
-            life_count: 5,
+            life_count: 3,
             score: 0,
         }
     }
 }
 
-fn create_player(mut commands: Commands) {
+fn spawn_player(mut commands: Commands) {
     commands.spawn(Player::new());
 }
 
-fn handle_player_hit(mut player_query: Query<&mut Player>, ship_query: Query<&Hit, With<Ship>>) {
+fn despawn_player(mut commands: Commands, player_query: Query<Entity, With<Player>>) {
+    if let Ok(player) = player_query.get_single() {
+        commands.entity(player).despawn_recursive();
+    }
+}
+
+fn handle_player_hit(
+    mut player_query: Query<&mut Player>,
+    ship_query: Query<&Hit, With<Ship>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
     if let Ok(mut player) = player_query.get_single_mut() {
         for _ in &ship_query {
             player.life_count -= 1;
 
             if player.life_count == 0 {
-                info!("GAME OVER");
+                next_state.set(GameState::Menu);
             }
         }
     }
@@ -60,8 +71,6 @@ fn handle_asteroid_hit(
                 AsteroidSize::Medium => 50,
                 AsteroidSize::Small => 100,
             };
-
-            info!("Player score: {}", player.score);
         }
     }
 }

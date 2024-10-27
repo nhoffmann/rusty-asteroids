@@ -26,7 +26,8 @@ impl Plugin for ShipPlugin {
                 FixedUpdate,
                 (handle_hit, displace).run_if(in_state(GameState::Playing)),
             )
-            .add_systems(OnEnter(ShipState::Destroyed), destroy)
+            .add_systems(OnEnter(ShipState::Destroyed), (despawn_ship, destroy))
+            .add_systems(OnEnter(GameState::Menu), despawn_ship)
             .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)));
     }
 }
@@ -86,6 +87,12 @@ fn spawn_ship(mut commands: Commands) {
     info!("Spawning ship");
 
     commands.spawn(ShipBundle::new(SHIP_RADIUS));
+}
+
+fn despawn_ship(mut commands: Commands, ship_query: Query<Entity, With<Ship>>) {
+    if let Ok(ship) = ship_query.get_single() {
+        commands.entity(ship).despawn_recursive();
+    }
 }
 
 fn rotate(
@@ -219,9 +226,8 @@ impl DestroyedBundle {
 #[derive(Component)]
 struct RespawnTime(Timer);
 
-fn destroy(mut commands: Commands, ship_query: Query<(Entity, &Transform), With<Ship>>) {
-    if let Ok((ship, transform)) = ship_query.get_single() {
-        commands.entity(ship).despawn_recursive();
+fn destroy(mut commands: Commands, ship_query: Query<&Transform, With<Ship>>) {
+    if let Ok(transform) = ship_query.get_single() {
         commands.spawn(DestroyedBundle::new(Position(
             transform.translation.truncate(),
         )));

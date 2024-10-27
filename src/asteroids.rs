@@ -11,16 +11,15 @@ pub struct AsteroidsPlugin;
 impl Plugin for AsteroidsPlugin {
     fn build(&self, app: &mut App) {
         app.add_sub_state::<AsteroidsState>()
+            .add_systems(OnEnter(GameState::Menu), spawn_asteroids)
+            .add_systems(OnExit(GameState::Menu), despawn_asteroids)
             .add_systems(OnEnter(AsteroidsState::Flying), spawn_asteroids)
             .add_systems(
                 Update,
                 (gizmo_draw_travelling_directions, check_level_complete)
                     .run_if(in_state(AsteroidsState::Flying)),
             )
-            .add_systems(
-                FixedUpdate,
-                (displace, handle_hit).run_if(in_state(AsteroidsState::Flying)),
-            )
+            .add_systems(FixedUpdate, (displace, handle_hit))
             .add_systems(
                 Update,
                 respawn_timer.run_if(in_state(AsteroidsState::Destroyed)),
@@ -128,6 +127,12 @@ fn spawn_asteroids(mut commands: Commands, window: Query<&Window>) {
             Velocity::random_with_speed(1.),
             AsteroidSize::Large,
         ));
+    }
+}
+
+fn despawn_asteroids(mut commands: Commands, asteroid_query: Query<Entity, With<Asteroid>>) {
+    for entity in &asteroid_query {
+        commands.entity(entity).despawn_recursive();
     }
 }
 

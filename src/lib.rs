@@ -1,22 +1,30 @@
 use asteroids::AsteroidsPlugin;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
+use menu::MenuPlugin;
 use player::PlayerPlugin;
 use rand::{prelude::thread_rng, Rng};
 
 use actions::ActionsPlugin;
 use bullets::BulletsPlugin;
 use ship::ShipPlugin;
+use ui::UiPlugin;
 
 mod actions;
 mod asteroids;
 mod bullets;
+mod menu;
 mod player;
 mod ship;
+mod ui;
+
+pub const TEXT_SIZE: f32 = 32.;
+pub const TEXT_COLOR: Color = Color::WHITE;
 
 #[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
 enum GameState {
     #[default]
+    Menu,
     Playing,
 }
 
@@ -31,10 +39,12 @@ impl Plugin for Asteroids {
                 BulletsPlugin,
                 AsteroidsPlugin,
                 PlayerPlugin,
+                UiPlugin,
+                MenuPlugin,
                 ShapePlugin,
             ))
             .add_systems(Startup, spawn_camera)
-            .add_systems(Update, wrap.run_if(in_state(GameState::Playing)));
+            .add_systems(FixedUpdate, wrap);
     }
 }
 
