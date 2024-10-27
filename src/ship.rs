@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{
     math::bounding::{Aabb2d, IntersectsVolume},
     prelude::*,
@@ -5,25 +7,46 @@ use bevy::{
 use bevy_prototype_lyon::prelude::*;
 
 use crate::{
-    actions::Actions, asteroids::Asteroid, Collider, GameState, Heading, Hit, Speed, Wrapping,
+    actions::Actions, asteroids::Asteroid, Collider, GameState, Heading, Hit, Position, Velocity,
+    Wrapping,
 };
 
 pub struct ShipPlugin;
 
 impl Plugin for ShipPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_ship)
+        app.add_sub_state::<ShipState>()
+            .add_systems(OnEnter(ShipState::Flying), spawn_ship)
             .add_systems(
                 Update,
-                (rotate, accelerate, displace, detect_collisions, wrap)
-                    .run_if(in_state(GameState::Playing)),
+                (
+                    rotate,
+                    accelerate,
+                    displace,
+                    detect_collisions,
+                    gizmo_draw_aiming,
+                )
+                    .run_if(in_state(ShipState::Flying)),
             )
+            .add_systems(OnEnter(ShipState::Destroyed), destroy)
+            .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)))
             .add_systems(FixedUpdate, handle_hit.run_if(in_state(GameState::Playing)));
     }
 }
 
-const SHIP_COLOR: Color = Color::WHITE;
-const ROTATION_SPEED: f32 = 10.;
+const SHIP_COLOR: Color = Color::srgb(0., 1., 0.);
+const SHIP_SPEED: f32 = 300.;
+const SHIP_RADIUS: f32 = 30.;
+const ROTATION_SPEED: f32 = 7.;
+const RESPAWN_TIME_IN_SECONDS: u64 = 3;
+
+#[derive(SubStates, Default, Clone, Eq, PartialEq, Debug, Hash)]
+#[source(GameState = GameState::Playing)]
+enum ShipState {
+    #[default]
+    Flying,
+    Destroyed,
+}
 
 #[derive(Component)]
 pub struct Ship;
@@ -33,7 +56,7 @@ pub struct ShipBundle {
     shape: ShapeBundle,
     fill: Fill,
     ship: Ship,
-    speed: Speed,
+    velocity: Velocity,
     heading: Heading,
     wrapping: Wrapping,
     collider: Collider,
@@ -54,7 +77,7 @@ impl ShipBundle {
             },
             fill: Fill::color(SHIP_COLOR),
             ship: Ship,
-            speed: Speed(Vec3::ZERO),
+            velocity: Velocity(Vec3::ZERO),
             heading: Heading(Vec3::ZERO),
             wrapping: Wrapping,
             collider: Collider,
@@ -65,7 +88,7 @@ impl ShipBundle {
 fn spawn_ship(mut commands: Commands) {
     info!("Spawning ship");
 
-    commands.spawn(ShipBundle::new(30.));
+    commands.spawn(ShipBundle::new(SHIP_RADIUS));
 }
 
 fn rotate(
@@ -78,62 +101,39 @@ fn rotate(
     }
 
     for mut transform in &mut ship_query {
-        transform
-            .rotate_z(actions.player_movement.unwrap().x * ROTATION_SPEED * time.delta_seconds());
+        transform.rotate_z(
+            (actions.player_movement.unwrap().x * -1.) * ROTATION_SPEED * time.delta_seconds(),
+        );
     }
 }
 
 fn accelerate(
     time: Res<Time>,
     actions: Res<Actions>,
-    mut ship_query: Query<(&mut Speed, &mut Heading, &Transform), With<Ship>>,
+    mut ship_query: Query<(&mut Velocity, &mut Heading, &Transform), With<Ship>>,
 ) {
     if actions.player_movement.is_none() {
         return;
     }
 
-    for (mut speed, mut heading, transform) in &mut ship_query {
+    for (mut velocity, mut heading, transform) in &mut ship_query {
         let direction = actions.player_movement.unwrap().y;
         if direction > 0. {
-            let velocity = direction * time.delta_seconds();
+            let velocity_change = direction * time.delta_seconds();
             let new_heading = transform.rotation * Vec3::Y;
-            let new_speed = speed.0 + new_heading * velocity;
+            let new_velocity = velocity.0 + new_heading * velocity_change;
 
-            speed.0 = new_speed;
+            velocity.0 = new_velocity;
             heading.0 = new_heading;
         }
     }
 }
 
 // Todo: This should probably be extracted as it is the same logic for the asteroids
-fn displace(time: Res<Time>, mut ship_query: Query<(&mut Transform, &Speed), With<Ship>>) {
-    for (mut transform, speed) in &mut ship_query {
-        let translation_delta = 100. * speed.0 * time.delta_seconds();
+fn displace(time: Res<Time>, mut ship_query: Query<(&mut Transform, &Velocity), With<Ship>>) {
+    for (mut transform, velocity) in &mut ship_query {
+        let translation_delta = SHIP_SPEED * velocity.0 * time.delta_seconds();
         transform.translation += translation_delta;
-    }
-}
-
-// Todo: This should be extracted, the asteroids will need the same logic
-fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<Wrapping>>) {
-    if let Ok(window) = window.get_single() {
-        let (width, height) = (window.width(), window.height());
-
-        for mut transform in &mut wrapping_query {
-            let position = transform.translation.truncate();
-
-            if position.x > width / 2. {
-                transform.translation = Vec3::new(position.x - width, position.y * -1., 0.)
-            }
-            if position.x < width / -2. {
-                transform.translation = Vec3::new(position.x + width, position.y * -1., 0.)
-            }
-            if position.y > height / 2. {
-                transform.translation = Vec3::new(position.x * -1., position.y - height, 0.);
-            }
-            if position.y < height / -2. {
-                transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
-            }
-        }
     }
 }
 
@@ -160,9 +160,100 @@ fn detect_collisions(
     }
 }
 
-fn handle_hit(mut commands: Commands, hit_query: Query<(Entity, &Hit), With<Ship>>) {
+fn handle_hit(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<ShipState>>,
+    hit_query: Query<(Entity, &Hit), With<Ship>>,
+) {
     for (entity, _) in hit_query.iter() {
         commands.entity(entity).remove::<Hit>();
-        info!("Ship destroyed");
+        next_state.set(ShipState::Destroyed);
+    }
+}
+
+fn gizmo_draw_aiming(mut gizmos: Gizmos, ship_query: Query<&Transform, With<Ship>>) {
+    for &transform in &ship_query {
+        let length = 100.;
+
+        gizmos.arrow_2d(
+            transform.translation.truncate(),
+            transform.translation.truncate() + (transform.rotation * Vec3::Y).truncate() * length,
+            SHIP_COLOR,
+        );
+    }
+}
+
+#[derive(Component)]
+struct DestroyedShip;
+
+#[derive(Bundle)]
+struct DestroyedBundle {
+    shape: ShapeBundle,
+    fill: Fill,
+    destroyed_ship: DestroyedShip,
+}
+
+impl DestroyedBundle {
+    fn new(position: Position) -> Self {
+        let shape = shapes::RegularPolygon {
+            sides: 4,
+            feature: shapes::RegularPolygonFeature::Radius(SHIP_RADIUS),
+            ..shapes::RegularPolygon::default()
+        };
+
+        Self {
+            shape: ShapeBundle {
+                path: GeometryBuilder::build_as(&shape),
+                spatial: SpatialBundle {
+                    transform: Transform {
+                        translation: Vec3::from((position.0, 0.)),
+                        ..default()
+                    },
+                    ..default()
+                },
+                ..default()
+            },
+            fill: Fill::color(SHIP_COLOR),
+            destroyed_ship: DestroyedShip,
+        }
+    }
+}
+
+#[derive(Component)]
+struct RespawnTime(Timer);
+
+fn destroy(mut commands: Commands, ship_query: Query<(Entity, &Transform), With<Ship>>) {
+    if let Ok((ship, transform)) = ship_query.get_single() {
+        commands.entity(ship).despawn_recursive();
+        commands.spawn(DestroyedBundle::new(Position(
+            transform.translation.truncate(),
+        )));
+        commands.spawn(RespawnTime(Timer::new(
+            Duration::from_secs(RESPAWN_TIME_IN_SECONDS),
+            TimerMode::Once,
+        )));
+        info!("Ship destroyed")
+    }
+}
+
+fn respawn_timer(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer_query: Query<(Entity, &mut RespawnTime)>,
+    ship_query: Query<Entity, With<DestroyedShip>>,
+    mut next_state: ResMut<NextState<ShipState>>,
+) {
+    for (entity, mut respawn_timer) in &mut timer_query {
+        // timers gotta be ticked, to work
+        respawn_timer.0.tick(time.delta());
+
+        // if it finished, despawn the bomb
+        if respawn_timer.0.finished() {
+            commands.entity(entity).despawn();
+            let ship = ship_query.single();
+            commands.entity(ship).despawn_recursive();
+
+            next_state.set(ShipState::Flying);
+        }
     }
 }

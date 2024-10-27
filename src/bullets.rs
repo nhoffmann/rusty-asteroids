@@ -100,10 +100,10 @@ fn despawn_bullet(
 
 fn detect_collisions(
     mut commands: Commands,
-    bullet_query: Query<&Transform, With<Bullet>>,
+    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     asteroid_query: Query<(Entity, &Transform), With<Asteroid>>,
 ) {
-    for bullet_transform in bullet_query.iter() {
+    for (bullet_entity, bullet_transform) in bullet_query.iter() {
         let bullet_bounding_box =
             Aabb2d::new(bullet_transform.translation.truncate(), Vec2::new(1., 1.));
 
@@ -115,6 +115,7 @@ fn detect_collisions(
 
             if bullet_bounding_box.intersects(&asteroid_bounding_box) {
                 commands.entity(entity).insert(Hit);
+                commands.entity(bullet_entity).despawn_recursive();
             }
         }
     }

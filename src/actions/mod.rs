@@ -56,9 +56,10 @@ pub fn set_fired_actions(
     ship_query: Query<&Transform, With<Ship>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        let ship_transform = ship_query.single();
-        actions.heading = Some(Heading(ship_transform.rotation * Vec3::Y));
-        actions.position = Some(Position(ship_transform.translation.truncate()));
+        if let Ok(ship_transform) = ship_query.get_single() {
+            actions.heading = Some(Heading(ship_transform.rotation * Vec3::Y));
+            actions.position = Some(Position(ship_transform.translation.truncate()));
+        }
     } else {
         actions.heading = None;
         actions.position = None;

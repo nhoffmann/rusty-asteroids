@@ -29,7 +29,8 @@ impl Plugin for Asteroids {
                 AsteroidsPlugin,
                 ShapePlugin,
             ))
-            .add_systems(Startup, spawn_camera);
+            .add_systems(Startup, spawn_camera)
+            .add_systems(Update, wrap.run_if(in_state(GameState::Playing)));
     }
 }
 
@@ -46,12 +47,36 @@ struct Position(Vec2);
 #[derive(Component)]
 struct Wrapping;
 
-// This vector gives the direction and speed the entity is travelling in
-#[derive(Component, Debug)]
-struct Speed(Vec3);
+// This vector gives the direction and velocity the entity is travelling in
+#[derive(Component, Debug, Clone, Copy)]
+struct Velocity(Vec3);
 
 #[derive(Component)]
 struct Collider;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct Hit;
+
+// Todo: This should be extracted, the asteroids will need the same logic
+fn wrap(window: Query<&Window>, mut wrapping_query: Query<&mut Transform, With<Wrapping>>) {
+    if let Ok(window) = window.get_single() {
+        let (width, height) = (window.width(), window.height());
+
+        for mut transform in &mut wrapping_query {
+            let position = transform.translation.truncate();
+
+            if position.x > width / 2. {
+                transform.translation = Vec3::new(position.x - width, position.y * -1., 0.)
+            }
+            if position.x < width / -2. {
+                transform.translation = Vec3::new(position.x + width, position.y * -1., 0.)
+            }
+            if position.y > height / 2. {
+                transform.translation = Vec3::new(position.x * -1., position.y - height, 0.);
+            }
+            if position.y < height / -2. {
+                transform.translation = Vec3::new(position.x * -1., position.y + height, 0.);
+            }
+        }
+    }
+}

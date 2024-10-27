@@ -8,8 +8,8 @@ An [Asteroids](https://en.wikipedia.org/wiki/Asteroids_(video_game)) clone writt
 * [x] Add bullets. The player ship will fire in the direction that it is facing. Bullets will disappear after a short while.
 * [x] Add asteroids
 * [x] Asteroids will drift around until they are shot or they collide with the player. 
-* [ ] Create three sizes of asteroids.
-* [ ] Asteroids will break into smaller asteroids when shot (The smallest will disappear when shot).
+* [x] Create three sizes of asteroids.
+* [x] Asteroids will break into smaller asteroids when shot (The smallest will disappear when shot).
 * [ ] If the player collides with an asteroid, they will lose a life.
 * [ ] Add menus and UI.
 * [ ] Add sound effects and particle effects.
