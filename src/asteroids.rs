@@ -16,8 +16,7 @@ impl Plugin for AsteroidsPlugin {
             .add_systems(OnEnter(AsteroidsState::Flying), spawn_asteroids)
             .add_systems(
                 Update,
-                (gizmo_draw_travelling_directions, check_level_complete)
-                    .run_if(in_state(AsteroidsState::Flying)),
+                (check_level_complete).run_if(in_state(AsteroidsState::Flying)),
             )
             .add_systems(FixedUpdate, (displace, handle_hit))
             .add_systems(
@@ -182,21 +181,6 @@ fn check_level_complete(
 ) {
     if asteroids_query.is_empty() {
         next_state.set(AsteroidsState::Destroyed)
-    }
-}
-
-fn gizmo_draw_travelling_directions(
-    mut gizmos: Gizmos,
-    ship_query: Query<(&Transform, &Velocity), With<Asteroid>>,
-) {
-    for (&transform, velocity) in &ship_query {
-        let length = 100.;
-
-        gizmos.arrow_2d(
-            transform.translation.truncate(),
-            transform.translation.truncate() + velocity.0.truncate() * length,
-            Color::WHITE,
-        );
     }
 }
 
