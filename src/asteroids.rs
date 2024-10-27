@@ -14,16 +14,12 @@ impl Plugin for AsteroidsPlugin {
             .add_systems(OnEnter(AsteroidsState::Flying), spawn_asteroids)
             .add_systems(
                 Update,
-                (
-                    displace,
-                    gizmo_draw_travelling_directions,
-                    check_level_complete,
-                )
+                (gizmo_draw_travelling_directions, check_level_complete)
                     .run_if(in_state(AsteroidsState::Flying)),
             )
             .add_systems(
                 FixedUpdate,
-                handle_hit.run_if(in_state(AsteroidsState::Flying)),
+                (displace, handle_hit).run_if(in_state(AsteroidsState::Flying)),
             )
             .add_systems(
                 Update,

@@ -18,9 +18,9 @@ impl Plugin for BulletsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (spawn_bullet, displace, detect_collisions, despawn_bullet)
-                .run_if(in_state(GameState::Playing)),
-        );
+            (spawn_bullet, detect_collisions, despawn_bullet).run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(FixedUpdate, displace.run_if(in_state(GameState::Playing)));
     }
 }
 

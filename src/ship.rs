@@ -19,24 +19,21 @@ impl Plugin for ShipPlugin {
             .add_systems(OnEnter(ShipState::Flying), spawn_ship)
             .add_systems(
                 Update,
-                (
-                    rotate,
-                    accelerate,
-                    displace,
-                    detect_collisions,
-                    gizmo_draw_aiming,
-                )
+                (rotate, accelerate, detect_collisions, gizmo_draw_aiming)
                     .run_if(in_state(ShipState::Flying)),
             )
+            .add_systems(
+                FixedUpdate,
+                (handle_hit, displace).run_if(in_state(GameState::Playing)),
+            )
             .add_systems(OnEnter(ShipState::Destroyed), destroy)
-            .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)))
-            .add_systems(FixedUpdate, handle_hit.run_if(in_state(GameState::Playing)));
+            .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)));
     }
 }
 
 const SHIP_COLOR: Color = Color::srgb(0., 1., 0.);
 const SHIP_SPEED: f32 = 300.;
-const SHIP_RADIUS: f32 = 30.;
+const SHIP_RADIUS: f32 = 15.;
 const ROTATION_SPEED: f32 = 7.;
 const RESPAWN_TIME_IN_SECONDS: u64 = 3;
 
