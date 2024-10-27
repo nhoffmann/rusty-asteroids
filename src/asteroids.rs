@@ -127,8 +127,10 @@ fn spawn_asteroids(mut commands: Commands, window: Query<&Window>) {
         let random_y: f32 = thread_rng().gen_range(half_height * -1.0..half_height);
         let random_position = Position(Vec2::new(random_x, random_y));
 
-        commands.spawn(AsteroidBundle::random_velocity(
+        commands.spawn(AsteroidBundle::new(
             random_position,
+            // initial asteroids shouldn't be too fast
+            Velocity::random_with_speed(1.),
             AsteroidSize::Large,
         ));
     }

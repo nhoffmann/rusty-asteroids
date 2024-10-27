@@ -1,6 +1,7 @@
 use asteroids::AsteroidsPlugin;
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
+use rand::{prelude::thread_rng, Rng};
 
 use actions::ActionsPlugin;
 use bullets::BulletsPlugin;
@@ -50,6 +51,22 @@ struct Wrapping;
 // This vector gives the direction and velocity the entity is travelling in
 #[derive(Component, Debug, Clone, Copy)]
 struct Velocity(Vec3);
+
+impl Velocity {
+    fn random() -> Self {
+        Self::random_with_speed(thread_rng().gen_range(0.1..3.))
+    }
+
+    fn random_with_speed(speed: f32) -> Self {
+        Self(
+            Vec3::new(
+                thread_rng().gen_range(-1.0..1.0),
+                thread_rng().gen_range(-1.0..1.0),
+                0.,
+            ) * speed,
+        )
+    }
+}
 
 #[derive(Component)]
 struct Collider;
