@@ -20,9 +20,13 @@ impl Plugin for BulletsPlugin {
             Update,
             (spawn_bullet, detect_collisions, despawn_bullet).run_if(in_state(GameState::Playing)),
         )
-        .add_systems(FixedUpdate, displace.run_if(in_state(GameState::Playing)));
+        .add_systems(FixedUpdate, displace.run_if(in_state(GameState::Playing)))
+        .add_event::<BulletFiredEvent>();
     }
 }
+
+#[derive(Event, Default)]
+pub(crate) struct BulletFiredEvent;
 
 #[derive(Component)]
 pub struct Bullet;
@@ -66,10 +70,16 @@ impl BulletBundle {
     }
 }
 
-fn spawn_bullet(mut commands: Commands, actions: Res<FiredAction>) {
+fn spawn_bullet(
+    mut commands: Commands,
+    actions: Res<FiredAction>,
+    mut bullet_fired: EventWriter<BulletFiredEvent>,
+) {
     if actions.heading.is_none() && actions.position.is_none() {
         return;
     }
+
+    bullet_fired.send_default();
 
     commands.spawn(BulletBundle::new(
         actions.heading.unwrap(),

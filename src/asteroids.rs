@@ -23,7 +23,10 @@ impl Plugin for AsteroidsPlugin {
                 Update,
                 respawn_timer.run_if(in_state(AsteroidsState::Destroyed)),
             )
-            .add_systems(OnEnter(AsteroidsState::Destroyed), start_respawn_timer);
+            .add_systems(OnEnter(AsteroidsState::Destroyed), start_respawn_timer)
+            .add_event::<BangLargeEvent>()
+            .add_event::<BangMediumEvent>()
+            .add_event::<BangSmallEvent>();
     }
 }
 
@@ -41,6 +44,13 @@ enum AsteroidsState {
     Flying,
     Destroyed,
 }
+
+#[derive(Event, Default)]
+pub(crate) struct BangLargeEvent;
+#[derive(Event, Default)]
+pub(crate) struct BangMediumEvent;
+#[derive(Event, Default)]
+pub(crate) struct BangSmallEvent;
 
 #[derive(Component)]
 pub struct Asteroid;
@@ -145,6 +155,9 @@ fn displace(mut asteroid_query: Query<(&mut Transform, &Velocity), With<Asteroid
 fn handle_hit(
     mut commands: Commands,
     hit_query: Query<(Entity, &AsteroidSize, &Transform, &Hit), With<Asteroid>>,
+    mut bang_large_event: EventWriter<BangLargeEvent>,
+    mut bang_medium_event: EventWriter<BangMediumEvent>,
+    mut bang_small_event: EventWriter<BangSmallEvent>,
 ) {
     for (entity, size, transform, _) in hit_query.iter() {
         match size {
@@ -157,6 +170,7 @@ fn handle_hit(
                     Position(transform.translation.truncate()),
                     AsteroidSize::Medium,
                 ));
+                bang_large_event.send_default();
             }
             AsteroidSize::Medium => {
                 commands.spawn(AsteroidBundle::random_velocity(
@@ -167,8 +181,11 @@ fn handle_hit(
                     Position(transform.translation.truncate()),
                     AsteroidSize::Small,
                 ));
+                bang_medium_event.send_default();
             }
-            _ => (),
+            _ => {
+                bang_small_event.send_default();
+            }
         }
 
         commands.entity(entity).despawn_recursive();

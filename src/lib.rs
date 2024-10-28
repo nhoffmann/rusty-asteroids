@@ -8,6 +8,7 @@ use rand::{prelude::thread_rng, Rng};
 use actions::ActionsPlugin;
 use bullets::BulletsPlugin;
 use ship::ShipPlugin;
+use sounds::SoundPlugin;
 use ui::UiPlugin;
 
 mod actions;
@@ -16,6 +17,7 @@ mod bullets;
 mod menu;
 mod player;
 mod ship;
+mod sounds;
 mod ui;
 
 pub const TEXT_SIZE: f32 = 32.;
@@ -41,6 +43,7 @@ impl Plugin for Asteroids {
                 PlayerPlugin,
                 UiPlugin,
                 MenuPlugin,
+                SoundPlugin,
                 ShapePlugin,
             ))
             .add_systems(Startup, spawn_camera)

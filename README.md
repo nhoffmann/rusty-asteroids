@@ -12,7 +12,7 @@ An [Asteroids](https://en.wikipedia.org/wiki/Asteroids_(video_game)) clone writt
 * [x] Asteroids will break into smaller asteroids when shot (The smallest will disappear when shot).
 * [x] If the player collides with an asteroid, they will lose a life.
 * [x] Add menus and UI.
-* [ ] Add sound effects and particle effects.
+* [x] Add sound effects and particle effects.
 
 ## Stretch goal
 * [ ] Add a flying saucer that enters the screen and shoots at the player from time to time. The saucer should generally aim towards the player, but shouldn’t have too good of aim!

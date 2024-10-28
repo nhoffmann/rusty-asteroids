@@ -28,7 +28,8 @@ impl Plugin for ShipPlugin {
             )
             .add_systems(OnEnter(ShipState::Destroyed), (despawn_ship, destroy))
             .add_systems(OnEnter(GameState::Menu), despawn_ship)
-            .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)));
+            .add_systems(Update, respawn_timer.run_if(in_state(ShipState::Destroyed)))
+            .add_event::<ThrustEvent>();
     }
 }
 
@@ -45,6 +46,9 @@ enum ShipState {
     Flying,
     Destroyed,
 }
+
+#[derive(Event, Default)]
+pub(crate) struct ThrustEvent;
 
 #[derive(Component)]
 pub struct Ship;
@@ -115,6 +119,7 @@ fn accelerate(
     time: Res<Time>,
     actions: Res<Actions>,
     mut ship_query: Query<(&mut Velocity, &mut Heading, &Transform), With<Ship>>,
+    mut thrust_event: EventWriter<ThrustEvent>,
 ) {
     if actions.player_movement.is_none() {
         return;
@@ -129,6 +134,8 @@ fn accelerate(
 
             velocity.0 = new_velocity;
             heading.0 = new_heading;
+
+            thrust_event.send_default();
         }
     }
 }
